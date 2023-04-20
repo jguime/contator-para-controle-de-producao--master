@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Nordeste</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <section class="menu-sup">
+      <div class="menu-content">
+        <div class="menu-sanduiche" onclick="exibeDiv()"></div>
+        <div class="logo"></div>
+      </div> 
+    </section>
+    <section id="sand">
+      <div class="menu-sup">
+        <div class="menu-content">
+          <div id="menu-sanduiche-esqueda" class="menu-sanduiche" onclick="ocultarDiv()"></div>
+        </div> 
+      </div>
+      <div class="options">
+        <div class="item-menu">Produção</div>
+        <div class="item-menu">OF</div>
+      </div>
+    </section>
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>OF</th>
+          <th>Contagem</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+      </tbody>
+    </table>
+    <script>
+    
+
+    function exibeDiv(){
+      var menu = document.getElementById("sand")
+      
+      menu.style.display = "block";
+    }
+    function ocultarDiv(){
+      var menu = document.getElementById("sand")
+      
+      menu.style.display = "none"; 
+    }
+		// Obtenha a tabela e o corpo da tabela
+		var table = document.querySelector('table');
+		var tableBody = document.querySelector('#table-body');
+    var Of;
+    var contagem = 1
+    fetch('/of')
+        .then(response => response.text())
+        .then( OrdemDeFabricacao => {
+          Of = OrdemDeFabricacao;
+        })
+        .catch(error => {
+          console.error('Erro ao atualizar OF', error)
+        })
+		// Crie um intervalo que atualize a tabela a cada hora
+		setInterval(function() {
+			// Obtenha a data e hora atual
+			var now = new Date();
+			var currentTime = now.toLocaleString();
+
+			// Crie uma nova linha e adicione a data e hora atual
+			var newRow = document.createElement('tr');
+			var timeCell = document.createElement('td');
+			timeCell.textContent = currentTime;
+			newRow.appendChild(timeCell);
+
+      var dataCell = document.createElement('td');
+			dataCell.textContent = Of;
+			newRow.appendChild(dataCell);
+
+
+      var dataCell = document.createElement('td');
+      fetch('/contagem')
+        .then(response => response.text())
+        .then(contagem => {
+          dataCell.textContent = contagem;
+        })
+        .catch(error => {
+          console.error('Erro ao atualizar a contagem:', error);
+        });
+      
+			newRow.appendChild(dataCell);
+
+			// Adicione a nova linha ao corpo da tabela
+			tableBody.appendChild(newRow);
+		}, 10000); // a cada hora (60 minutos x 60 segundos x 1000 milissegundos)
+    </script>
+  </body>
+</html>
