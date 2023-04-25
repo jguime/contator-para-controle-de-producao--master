@@ -1,76 +1,93 @@
-#include <WiFi.h>
-#include <AsyncTCP.h>
-#include <ESPAsyncWebServer.h>
-#include <esp_adc_cal.h>
-#include "SPIFFS.h"
+/*
+  João Guilherme
+
+  Projeto feito afim de facilitar o acesso a informações de produção entre outras.
+  
+  Projeto feito com adaptações do exemplo de @Rui Santos
+  Link completo do projeto em https://RandomNerdTutorials.com/esp32-esp-now-wi-fi-web-server/
+  
+*/
+
 #include <esp_now.h>
-#include <esp_wifi.h>
+#include <WiFi.h>
+#include "ESPAsyncWebServer.h"
+#include <Arduino_JSON.h>
+#include "SPIFFS.h"
 
-#define ssid "ESP32-AP"     //   - Nome da rede Wi-Fi do ponto de acesso
-#define password "senha123" //
+// Replace with your network credentials (STATION)
+const char* ssid = "ESP32-AP";
+const char* password = "123456789";
 
-const int serverPort = 80;         //   - Porta do servidor web
-const int pinContador = 2;         //   - Pino 2 definido para a leitura do sinal de contagem
-
-//_______________________________________________________________________________________________PARAMETROS 
-unsigned long tempoCorrente = 0;
 unsigned long contador = 0;
-int contador_slv_1 = 0;
-int contador_slv_2 = 0;
-int contador_slv_3 = 0;
-int contador_slv_4 = 0;
-
-unsigned int of = 0;              // NUMERO DE ORDEM DE FABRICAÇÃO
+const char* PARAM_INPUT = "ordem";
+int of = 0;            // NUMERO DA ORDEM DE FABRICAÇÃO
 bool teste = false;               // Valor Default para lógica de contagem      
 
-AsyncWebServer server(serverPort);  
-
-// Define a estrutura das informações transmitidas
+// Structure example to receive data
+// Must match the sender structure
 typedef struct struct_message {
-  String setor;
-  unsigned long contador;
+  int id;
+  unsigned long contagem;
 } struct_message;
- 
-// Create structured data object
-struct_message myData;
 
-void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) 
-{
-  // Get incoming data
-  memcpy(&myData, incomingData, sizeof(myData));
-  Serial.println("Receive Data: ");
-  Serial.print(myData.setor);
-  Serial.print(": ");
-  Serial.println(myData.contador);
+struct_message incomingReadings;
+
+
+
+
+
+JSONVar board;
+
+
+
+AsyncWebServer server(80);
+AsyncEventSource events("/events");
+
+// callback function that will be executed when data is received
+void OnDataRecv(const uint8_t * mac_addr, const uint8_t *incomingData, int len) { 
+  // Copies the sender mac address to a string
+  char macStr[18];
+  Serial.print("Packet received from: ");
+  snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x",
+           mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+  Serial.println(macStr);
+  memcpy(&incomingReadings, incomingData, sizeof(incomingReadings));
   
+  board["of"] = of;
+  board["contagem"] = incomingReadings.contagem;
+  String jsonString = JSON.stringify(board);
+  events.send(jsonString.c_str(), "new_readings", millis());
+  
+  Serial.printf("Contagem %u: %u bytes\n", incomingReadings.contagem, len);
+
+  Serial.println();
 }
+
 void setup() {
-  // Montagem do SPiFFS (acesso a memoria flash do ESP)
-  SPIFFS.begin();
+  // Initialize Serial Monitor
   Serial.begin(115200);
+  SPIFFS.begin();
+  // Set the device as a Station and Soft Access Point simultaneously
   WiFi.mode(WIFI_AP_STA);
-  WiFi.printDiag(Serial); // Uncomment to verify channel number before
-  WiFi.printDiag(Serial); // Uncomment to verify channel change after
-  // Configurar o ESP32 APmode (Acess Point)
-  
-  Serial.print("MacAddress: ");
-  //Serial.println(WiFi.macAddress());
-  
-  Serial.print("Endereço IP do ponto de acesso: ");
+
+  WiFi.softAP(ssid, password);
+  // Set device as a Wi-Fi Station
+  //WiFi.begin(ssid, password);
+  Serial.print("Station IP Address: ");
   Serial.println(WiFi.softAPIP());
-  
-    // Initalize ESP-NOW
-  if (esp_now_init() != 0) {
+  Serial.print("Wi-Fi Channel: ");
+  Serial.println(WiFi.channel());
+
+  // Init ESP-NOW
+  if (esp_now_init() != ESP_OK) {
     Serial.println("Error initializing ESP-NOW");
     return;
   }
-
-    // Register callback function
-  esp_now_register_recv_cb(OnDataRecv);
   
-  pinMode(pinContador, INPUT_PULLDOWN);
+  // Once ESPNow is successfully Init, we will register for recv CB to
+  // get recv packer info
+  esp_now_register_recv_cb(OnDataRecv);
 
-  //_________________________________________________________________________ CONFIGURAÇÕES DO SERVIDOR WEB.
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/index.html");
   });
@@ -83,34 +100,55 @@ void setup() {
   server.on("/cardapio.png", HTTP_GET, [](AsyncWebServerRequest *request){
   request->send(SPIFFS, "/cardapio.png", "image/png");
   });
-  server.on("/contagem", HTTP_GET, [](AsyncWebServerRequest *request){
-    String ContagemString = String(contador);
-    request->send(200, "text/plain", ContagemString);  // Enviar a temperatura como resposta
-    contador = 0;                                      // Zera o contador sempre que enviar a requisição ao site.
+  server.on("/update", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    String inputMessage;
+    // GET input1 value on <ESP_IP>/update?output=<inputMessage1>&state=<inputMessage2>
+    if (request->hasParam(PARAM_INPUT)) {
+      inputMessage = request->getParam(PARAM_INPUT)->value();
+      request->send(200,"text/plain", "OK");
+      of = inputMessage.toInt();
+    }
+    else {
+      inputMessage = "No message sent";
+
+    }
+    Serial.print("of: ");
+    Serial.print(inputMessage);
   });
-  server.on("/of", HTTP_GET, [](AsyncWebServerRequest *request){
-    String OfString = String(of);
-    request->send(200, "text/plain", OfString);
-  }); 
+  events.onConnect([](AsyncEventSourceClient *client){
+    if(client->lastId()){
+      Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
+    }
+    // send event with message "hello!", id current millis
+    // and set reconnect delay to 1 second
+    client->send("hello!", NULL, millis(), 10000);
+  });
+  server.addHandler(&events);
   server.begin(); // Iniciar o servidor web
 }
-
+ 
 void loop() {
-  bool status = digitalRead(pinContador);
+  static unsigned long lastEventTime1 = millis();
+  static unsigned long lastEventTime2 = millis();
+  static const unsigned long EVENT_INTERVAL_MS = 5000;
+  bool status = digitalRead(2);
   
-  if(millis() - tempoCorrente > 100){
+  if(millis() - lastEventTime1 > 100){
     if(!status){
     teste = true;
-    tempoCorrente = millis();
+    lastEventTime1 = millis();
     }
     }
-  if(millis() - tempoCorrente >100){
+  if(millis() - lastEventTime1 >100){
       if(status && teste){
         teste = false;
         contador++;
-        tempoCorrente = millis();
+        lastEventTime1 = millis();
         Serial.println(contador);
       }
   }
-  
+  if ((millis() - lastEventTime2) > EVENT_INTERVAL_MS) {
+    events.send("ping",NULL,millis());
+    lastEventTime2 = millis();
+  }
 }

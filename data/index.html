@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="UTF-8">
     <title>Nordeste</title>
     <link rel="stylesheet" href="style.css">
   </head>
@@ -11,15 +12,24 @@
         <div class="logo"></div>
       </div> 
     </section>
-    <section id="sand">
+    <section id="aba-lateral">
       <div class="menu-sup">
         <div class="menu-content">
           <div id="menu-sanduiche-esqueda" class="menu-sanduiche" onclick="ocultarDiv()"></div>
         </div> 
       </div>
       <div class="options">
-        <div class="item-menu">Produção</div>
-        <div class="item-menu">OF</div>
+        <div class="item-menu" onclick="open_win_cad_of()">OF</div>
+      </div>
+    </section>
+    <section id="win_cad_of">
+      <div class="card shadow">
+        <p class="text-title">Cadastro de OF</p>
+        <input id="of_value" type="number" name="Digite a OF aqui!">
+        <div class="buttons">
+          <button class="send_button"  style="background-color: #6b64f3;" onclick="send_mensage()">Enviar</button>
+          <button class="close_button" onclick="close_win_cad_of()" style="background-color: #f36464;">Fechar</button>
+        </div>
       </div>
     </section>
     <table>
@@ -27,40 +37,66 @@
         <tr>
           <th>Data</th>
           <th>OF</th>
-          <th>Contagem</th>
+          <th>modelagem</th>
+          <th>esmaltação</th>
         </tr>
       </thead>
       <tbody id="table-body">
       </tbody>
     </table>
     <script>
-    
 
-    function exibeDiv(){
-      var menu = document.getElementById("sand")
+
+      function exibeDiv(){
+        var menu = document.getElementById("aba-lateral")
+        
+        menu.style.display = "block";
+      }
+      function ocultarDiv(){
+        var menu = document.getElementById("aba-lateral")
+        
+        menu.style.display = "none"; 
+      }
+      function open_win_cad_of(){
+        console.log("Função ativada!")
+        var wind_of = document.getElementById("win_cad_of")
+        wind_of.style.display = "block";   
+      }
+      function close_win_cad_of(){
+        var wind_of = document.getElementById("win_cad_of")
+        wind_of.style.display = "none";
+      }
+      function send_mensage() {
+        var ordem = document.getElementById("of_value");
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "/update?ordem="+ordem.value, true);
+        xhr.send();
+        
+      }
+      // Obtenha a tabela e o corpo da tabela
+      var table = document.querySelector('table');
+      var tableBody = document.querySelector('#table-body');
+
+      if (!!window.EventSource) {
+      var source = new EventSource('/events');
       
-      menu.style.display = "block";
-    }
-    function ocultarDiv(){
-      var menu = document.getElementById("sand")
+      source.addEventListener('open', function(e) {
+        console.log("Events Connected");
+      }, false);
+      source.addEventListener('error', function(e) {
+        if (e.target.readyState != EventSource.OPEN) {
+          console.log("Events Disconnected");
+        }
+      }, false);
       
-      menu.style.display = "none"; 
-    }
-		// Obtenha a tabela e o corpo da tabela
-		var table = document.querySelector('table');
-		var tableBody = document.querySelector('#table-body');
-    var Of;
-    var contagem = 1
-    fetch('/of')
-        .then(response => response.text())
-        .then( OrdemDeFabricacao => {
-          Of = OrdemDeFabricacao;
-        })
-        .catch(error => {
-          console.error('Erro ao atualizar OF', error)
-        })
-		// Crie um intervalo que atualize a tabela a cada hora
-		setInterval(function() {
+      source.addEventListener('message', function(e) {
+        console.log("message", e.data);
+      }, false);
+      
+      source.addEventListener('new_readings', function(e) {
+      console.log("new_readings", e.data);
+      var obj = JSON.parse(e.data);
+
 			// Obtenha a data e hora atual
 			var now = new Date();
 			var currentTime = now.toLocaleString();
@@ -72,25 +108,19 @@
 			newRow.appendChild(timeCell);
 
       var dataCell = document.createElement('td');
-			dataCell.textContent = Of;
+			dataCell.textContent = obj.of;
 			newRow.appendChild(dataCell);
 
 
       var dataCell = document.createElement('td');
-      fetch('/contagem')
-        .then(response => response.text())
-        .then(contagem => {
-          dataCell.textContent = contagem;
-        })
-        .catch(error => {
-          console.error('Erro ao atualizar a contagem:', error);
-        });
-      
+      dataCell.textContent = obj.contagem;
+
 			newRow.appendChild(dataCell);
 
 			// Adicione a nova linha ao corpo da tabela
 			tableBody.appendChild(newRow);
-		}, 10000); // a cada hora (60 minutos x 60 segundos x 1000 milissegundos)
+    }, false);
+    }
     </script>
   </body>
 </html>

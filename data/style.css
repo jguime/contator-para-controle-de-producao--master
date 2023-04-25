@@ -1,6 +1,10 @@
-
+*{
+    margin:0;
+    padding:0;
+    border:0;
+}
 .menu-sup{
-    position: absolute;
+    position: relative;
     width: 102%;
     height: 120px;
     left: 0px;
@@ -28,8 +32,8 @@
     background: url(cardapio.png);
     background-size: 65px;
 }
-#sand{
-    display: block;
+#aba-lateral{
+    display: none;
     position: absolute;
     width: 25rem;
     height: 100%;
@@ -57,30 +61,102 @@
     border-bottom: 1px solid #CCCCCC;
     cursor: pointer;
 }
+#win_cad_of{
+    display: none;
+}
+.card {
+    display: block;
+    padding-top:5%;
+    position: absolute;
+    transform: 50%;
+    translate: -50%;
+    left: 50%;
+    top: 30%;
+    width: 80%;
+    height: 500px;
+    background: white;
+    border-radius: 10px;
+    transition: border-radius 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+   }
+   
+   .shadow {
+        box-shadow: inset 0 -3em 3em rgba(0,0,0,0.1),
+                0 0  0 2px rgb(190, 190, 190),
+                0.3em 0.3em 1em rgba(0,0,0,0.3);
+   }
+   
+    .text-title {
+        font-size: 1.5em;
+        font-weight: bold;
+        font-family: Georgia, 'Times New Roman', Times, serif
+   }
+    p {
+        font-weight: 400;
+        position: absolute;
+        transform: 50%;
+        translate: -50%;
+        left: 50%;
+        top: 30%;
+        font-size: 30px;
+}
+.card input{
+    padding: 10px 20px;
+    font-size: 24px;
+    position: absolute;
+    transform: 50%;
+    translate: -50%;
+    left: 50%;
+    top: 40%;
+    font-weight: bold;
+    box-shadow: inset 0 -3em 3em rgba(0,0,0,0.1),
+                0 0  0 2px rgb(190, 190, 190),
+                0.3em 0.3em 1em rgba(0,0,0,0.3);
+}
+.buttons{
+    display: block;
+    position: absolute;
+    transform: 50%;
+    translate: -50%;
+    left: 50%;
+    top: 50%;
+    
+    }
+     .send_button, .close_button {
+        padding: 20px 50px;
+        margin: 15px;
+        border-radius: 8px;
+        border: none;
+        background: #6b64f3;
+        color: white;
+        font-weight: 600;
+        font-size: 20px;
+    }
+
 
 
 table {
-margin: 1rem;
-font-size: 28px;
-border-collapse: collapse;
-width: 50%;
-margin-top: 60px;
+    margin-top: 10rem; ;
+    margin: 1rem;
+    font-size: 28px;
+    border-collapse: collapse;
+    width: 50%;
+    margin-top: 60px;
 }
 
 th, td {
-width: 4rem;
-padding: 8px;
-text-align: left;
-border-bottom: 1px solid #ddd;
+    width: 4rem;
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
 }
 
 th {
 
-background-color: #f2f2f2;
+    background-color: #f2f2f2;
 }
 
 tr:nth-child(even) {
-background-color: #f2f2f2;
+    background-color: #f2f2f2;
 }
 @media (max-width: 980px){
     table {
@@ -103,8 +179,9 @@ background-color: #f2f2f2;
     }
 
 }
+
 #menu-sanduiche-esqueda {
-    animation: anim-menu 0.5s linear;
+    animation: anim-menu 0.2s linear;
 
     -moz-transform: scaleX(-1);
     -o-transform: scaleX(-1);
